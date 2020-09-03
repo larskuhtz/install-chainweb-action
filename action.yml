@@ -1,0 +1,21 @@
+name: Install Chainweb
+description: Install Chainweb Node
+author: Lars Kuhtz <lakuhtz@gmail.com>
+inputs:
+  version:
+    description: |
+      Chainweb-node version to be installed.
+      Either a release, the first 7 hex digits of the git revision, 'latest', or 'master'.
+      Default: 'latest'
+    required: false
+  ghc_version:
+    description: |
+      GHC compiler version that was used for the build.
+      Default: ghc-8.10.2
+    required: false
+  github_token:
+    description: Github API secret
+    required: true
+runs:
+  using: node12
+  main: 'dist/index.js'

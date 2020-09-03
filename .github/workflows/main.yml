@@ -1,0 +1,15 @@
+on: [push]
+
+jobs:
+  install-chainweb:
+    runs-on: ubuntu-latest
+    name: Test install-chainweb-action
+    steps:
+    - name: Install latest chainweb-node version
+      uses: larskuhtz/install-chainweb-action@master
+      with:
+        ghc-version: '8.8.4'
+        revision: 'latest'
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Print chainweb-node version
+      run: chainweb-node --version

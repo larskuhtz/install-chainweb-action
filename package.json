@@ -1,0 +1,51 @@
+{
+  "name": "install-chainweb-action",
+  "author": "Lars Kuhtz <lakuhtz@gmail.com>",
+  "version": "1.0.0",
+  "description": "Install Chainweb Action",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "files": [
+    "lib"
+  ],
+  "jest": {
+    "rootDir": ".",
+    "testEnvironment": "node"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "prepare": "ncc build index.js -o dist --source-map",
+    "test": "jest",
+    "all": "npm run lint && npm run prepare && npm run test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lakuhtz/install-chainweb-action.git"
+  },
+  "keywords": [
+    "GitHub",
+    "Actions",
+    "Chainweb",
+    "chainweb-node",
+    "Kadena"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/larskuhtz/install-chainweb-action/issues"
+  },
+  "homepage": "https://github.com/larskuhtz/install-chainweb-action#readme",
+  "dependencies": {
+    "@actions/core": "^1.2.5",
+    "@actions/exec": "^1.0.4",
+    "@actions/github": "^4.0.0",
+    "@actions/tool-cache": "^1.6.0"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.24.0",
+    "eslint": "^7.4.0",
+    "jest": "^26.1.0",
+    "tmp": "^0.1.0"
+  }
+}
