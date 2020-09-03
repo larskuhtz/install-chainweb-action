@@ -5,7 +5,6 @@ const tmp = require('tmp');
 const path = require('path');
 const ic = require('./lib/InstallChainweb.js');
 
-// shows how the runner will run a javascript action with env / stdout protocol
 test('test setup', async () => {
   expect.assertions(3);
   const tmpDir = tmp.dirSync({ "prefix": "install-chainweb-action-test", "unsafeCleanup": true});

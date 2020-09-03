@@ -5,11 +5,13 @@ jobs:
     runs-on: ubuntu-latest
     name: Test install-chainweb-action
     steps:
+    - name: Install dependencies
+      run: sudo apt-get install librocksdb-dev
     - name: Install latest chainweb-node version
       uses: larskuhtz/install-chainweb-action@master
       with:
-        ghc-version: '8.8.4'
-        revision: 'latest'
+        ghc_version: '8.8.3'
+        version: '2.1'
         github_token: ${{ secrets.GITHUB_TOKEN }}
     - name: Print chainweb-node version
       run: chainweb-node --version
