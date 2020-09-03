@@ -30,12 +30,19 @@ inputs:
 ## Example
 
 ```yml
-- name: install latest chainweb-node version
-  uses: larskuhtz/install-chainweb-action@master
-  with:
-    version: 'latest'
-    ghc: '8.10.2'
-    github_token: ${{ secrets.GITHUB_TOKEN }}
-- name: check chainweb-node
-  run: chainweb-node --version
+on: [push]
+
+jobs:
+  install-chainweb:
+    runs-on: ubuntu-latest
+    name: Test install-chainweb-action
+    steps:
+    - name: install latest chainweb-node version
+      uses: larskuhtz/install-chainweb-action@master
+      with:
+        version: 'latest'
+        ghc: '8.10.2'
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+    - name: check chainweb-node
+      run: chainweb-node --version
 ```
