@@ -37,8 +37,6 @@ jobs:
     runs-on: ubuntu-latest
     name: Test install-chainweb-action
     steps:
-    - name: Install dependencies
-      run: sudo apt-get install librocksdb-dev
     - name: install latest chainweb-node version
       uses: larskuhtz/install-chainweb-action@master
       with:

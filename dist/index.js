@@ -2,96 +2,20 @@ require('./sourcemap-register.js');module.exports =
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 2932:
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-/* module decorator */ module = __webpack_require__.nmd(module);
-const core = __webpack_require__(2186);
-const cc = __webpack_require__(2035);
-
-async function run() {
-  try {
-    await cc.installChainweb();
-  } catch (error) {
-    core.setFailed(error.message);
-  }
-}
-
-module.export = run;
-
-run()
-
-
-/***/ }),
-
 /***/ 2035:
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const core = __webpack_require__(2186);
-const exec = __webpack_require__(1514);
 const tools = __webpack_require__(7784);
-const github = __webpack_require__(5438);
 const path = __webpack_require__(5622);
 
+const { execGetOutput, getReleases } = __webpack_require__(7919);
+
+// Constants
+//
 const s3_bucket = "kadena-cabal-cache"
 const s3_folder = "chainweb-node"
 const applications = ["chainweb-node", "chainweb-tests", "cwtool", "bench"]
-
-async function execWithOutput(proc, args, throwOnError) {
-  let output = '';
-  let error = '';
-
-  const options = {};
-  options.listeners = {
-    stdout: data => {
-      output += data.toString();
-    },
-    stderr: data => {
-      error += data.toString();
-    }
-  };
-  const s = await exec.exec(proc, args, options);
-
-  if (throwOnError && s !== 0) {
-    throw new Error(`Command ${ proc } ${ JSON.stringify(args) } exited with status ${ s }`);
-  }
-
-  return {
-    output: output,
-    error: error,
-    status: s
-  };
-}
-
-async function getReleases (token) {
-  const octokit = github.getOctokit(token);
-
-  const query = `query releases($name: String!, $owner: String!)
-    {
-      repository(name: $name, owner: $owner) {
-        releases(orderBy: {field: CREATED_AT, direction: DESC}, first: 20) {
-          edges {
-            node {
-              tag {
-                target {
-                  abbreviatedOid
-                }
-              }
-              tagName
-            }
-          }
-        }
-      }
-    }
-  `;
-
-  const variables = { "owner": "kadena-io", "name": "chainweb-node" };
-  const result = await octokit.graphql(query, variables);
-  return result.repository.releases.edges.map(i => ({
-    release: i.node.tagName,
-    revision: i.node.tag.target.abbreviatedOid
-  }));
-}
 
 // Resolve revision
 //
@@ -117,19 +41,12 @@ async function getOsRelease() {
   } else if (process.platform === 'darwin') {
     return 'macOS-latest';
   } else if (process.platform === 'linux') {
-
-    let distro = undefined;
-    try {
-      distro = await execWithOutput("lsb_release", ["-s", "-i"], true);
-    } catch {
-      throw new Error(`unsupported linux distribution: lsb_release does not exist or failed`);
-    }
-
-    if (distro.output.trim() === 'Ubuntu') {
-      const v = await execWithOutput("lsb_release", ["-s", "-r"], true);
-      return `ubuntu-${ v.output.trim() }`;
+    const distro = await execGetOutput("lsb_release", ["-s", "-i"]);
+    if (distro.trim() === 'Ubuntu') {
+      const v = await execGetOutput("lsb_release", ["-s", "-r"])
+      return `ubuntu-${ v.trim() }`;
     } else {
-      throw new Error(`unsupported debian distribution: ${ distro.output.trim() }`);
+      throw new Error(`unsupported debian distribution: ${ distro.trim() }`);
     }
   } else {
     throw new Error(`unsupported platform: ${process.platform}`);
@@ -140,18 +57,21 @@ async function getOsRelease() {
 //
 async function getArgs () {
 
+  // ghc version
   var ghc = core.getInput('ghc_version')
   if (!ghc) { ghc = "8.10.2"; }
   core.debug(`ghc-version: ${ ghc }`);
 
+  // github_token
   const token = core.getInput('github_token');
   if (! token) {
-    throw new Error('missing github token')
+    throw new Error('missing github token');
   }
 
-  var verarg = core.getInput('version')
+  // version
+  let verarg = core.getInput('version')
   if (!verarg) { verarg = "latest"; }
-  var version = await getVersion(token, verarg);
+  let version = await getVersion(token, verarg);
   core.debug(`got version: ${ JSON.stringify(version) }`);
 
   return ({
@@ -192,10 +112,26 @@ async function cacheChainweb(args) {
   }
 }
 
+async function installRocksDb() {
+  if (process.platform === 'darwin') {
+      execGetOutput("brew", ["install", "rocksdb"]);
+  } else if (process.platform === 'linux') {
+    const distro = await execGetOutput("lsb_release", ["-s", "-i"]);
+    if (distro.trim() === 'Ubuntu') {
+      execGetOutput("sudo", ["apt-get", "install", "-y", "librocksdb-dev"])
+    } else {
+      throw new Error(`unsupported debian distribution: ${ distro.trim() }`);
+    }
+  } else {
+    throw new Error(`unsupported platform: ${process.platform}`);
+  }
+}
+
 // Provide chainweb applications by providing them in the path
 //
 async function installChainweb(args) {
   core.debug(`args: ${ JSON.stringify(args) }`);
+  await installRocksDb();
 
   if ( args.release ) {
     core.info(`installing chainweb-node version ${ args.release } compiled with GHC-${ args.ghc }.`)
@@ -222,7 +158,83 @@ async function installChainweb(args) {
 }
 
 module.exports.installChainweb = async () => installChainweb(await getArgs());
-module.exports.execWithOutput= execWithOutput;
+
+
+/***/ }),
+
+/***/ 7919:
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+const core = __webpack_require__(2186);
+const exec = __webpack_require__(1514);
+const github = __webpack_require__(5438);
+
+async function execGetOutput(proc, args) {
+  let output = '';
+  const options = {};
+  options.listeners = {
+    stdout: data => { output += data.toString(); },
+    stderr: data => { core.error(data.toString()); }
+  };
+  if (await exec.exec(proc, args, options) > 0) {
+    throw new Error(`Command ${ proc } ${ JSON.stringify(args) } exited with status ${ s }`);
+  } else {
+    return output;
+  }
+}
+
+async function getReleases (token) {
+  const octokit = github.getOctokit(token);
+  const query = `query releases($name: String!, $owner: String!)
+    {
+      repository(name: $name, owner: $owner) {
+        releases(orderBy: {field: CREATED_AT, direction: DESC}, first: 20) {
+          edges {
+            node {
+              tag {
+                target {
+                  abbreviatedOid
+                }
+              }
+              tagName
+            }
+          }
+        }
+      }
+    }
+  `;
+  const variables = { "owner": "kadena-io", "name": "chainweb-node" };
+  const result = await octokit.graphql(query, variables);
+  return result.repository.releases.edges.map(i => ({
+    release: i.node.tagName,
+    revision: i.node.tag.target.abbreviatedOid
+  }));
+}
+
+module.exports.getReleases = getReleases;
+module.exports.execGetOutput = execGetOutput;
+
+
+/***/ }),
+
+/***/ 4822:
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+/* module decorator */ module = __webpack_require__.nmd(module);
+const core = __webpack_require__(2186);
+const cc = __webpack_require__(2035);
+
+async function run() {
+  try {
+    await cc.installChainweb();
+  } catch (error) {
+    core.setFailed(error.message);
+  }
+}
+
+module.export = run;
+
+run()
 
 
 /***/ }),
@@ -9836,7 +9848,7 @@ module.exports = require("zlib");
 /******/ 	// module exports must be returned from runtime so entry inlining is disabled
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(2932);
+/******/ 	return __webpack_require__(4822);
 /******/ })()
 ;
 //# sourceMappingURL=index.js.map
