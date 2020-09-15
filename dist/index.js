@@ -8,6 +8,7 @@ require('./sourcemap-register.js');module.exports =
 const core = __webpack_require__(2186);
 const tools = __webpack_require__(7784);
 const path = __webpack_require__(5622);
+const fs = __webpack_require__(5747);
 
 const { execGetOutput, getReleases } = __webpack_require__(7919);
 
@@ -96,14 +97,23 @@ async function cacheChainweb(args) {
 
   const tarPath = await tools.downloadTool(url);
   core.debug(`finished downloading, stored result in ${ tarPath }`);
-  const tmpPath = await tools.extractTar(tarPath);
+  const extractPath = await tools.extractTar(tarPath);
+
+
+  const tmpPath = fs.existsSync(path.join(extractPath, "chainweb"))
+    ? path.join(extractPath, "chainweb")
+    : extractPath; // backward compat
+
   core.debug(`extracted applications to ${ tmpPath }`);
 
   if (args.release) {
-    core.debug(`Caching chainweb-node-${ args.release }`)
-    const cachedPath = await tools.cacheDir(tmpPath, 'chainweb-node', args.release);
-    core.debug(`adding path ${ cachedPath }`)
-    core.addPath(cachedPath);
+    let cachedPath;
+    for (const prog in ['chainweb-node', 'chainweb-tests,', 'cwtool', 'bench']) {
+        core.debug(`Caching ${ prog }-${ args.release }`)
+        cachedPath = await tools.cacheDir(tmpPath, prog, args.release);
+        core.debug(`adding path ${ cachedPath }`)
+        core.addPath(cachedPath);
+    }
     return cachedPath;
   } else {
     core.debug(`adding path ${ tmpPath }`)
